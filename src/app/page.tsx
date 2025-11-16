@@ -4,27 +4,7 @@ import { Canvas } from '@react-three/fiber';
 import { useMemo, useState } from 'react';
 import { MeshTransmissionMaterial } from '@react-three/drei';
 import { generatePalette, type PaletteType } from '../colorUtils';
-
-// Color preset configurations
-type PresetConfig = {
-  name: string;
-  paletteType: PaletteType;
-  seedOffset: number;
-  previewColors: string[];
-};
-
-const COLOR_PRESETS: PresetConfig[] = [
-  { name: 'Rainbow', paletteType: 'triadic', seedOffset: 100, previewColors: ['#ff006e', '#8338ec', '#0b5bff', '#06ffa5', '#ffbe0b', '#fb5607'] },
-  { name: 'Purple Pink', paletteType: 'analogous', seedOffset: 200, previewColors: ['#8338ec', '#ff006e', '#fb5607'] },
-  { name: 'Blue Green', paletteType: 'complementary', seedOffset: 300, previewColors: ['#0b5bff', '#06ffa5'] },
-  { name: 'Orange Red', paletteType: 'analogous', seedOffset: 400, previewColors: ['#fb5607', '#ff006e'] },
-  { name: 'Black', paletteType: 'monochromatic', seedOffset: 500, previewColors: ['#000000', '#1a1a1a', '#333333'] },
-  { name: 'White', paletteType: 'monochromatic', seedOffset: 600, previewColors: ['#ffffff', '#f0f0f0', '#e0e0e0'] },
-  { name: 'B&W Gradient', paletteType: 'complementary', seedOffset: 700, previewColors: ['#000000', '#ffffff'] },
-  { name: 'Green Yellow', paletteType: 'analogous', seedOffset: 800, previewColors: ['#06ffa5', '#ffbe0b'] },
-  { name: 'Orange Brown', paletteType: 'monochromatic', seedOffset: 900, previewColors: ['#fb5607', '#8b4513', '#654321'] },
-  { name: 'Blue Gradient', paletteType: 'monochromatic', seedOffset: 1000, previewColors: ['#3a86ff', '#0b5bff', '#001f7f'] },
-];
+import ColorWheel from '../components/ColorWheel';
 
 // Seeded random function for stable random values
 function seededRandom(seed: number) {
@@ -32,25 +12,9 @@ function seededRandom(seed: number) {
   return x - Math.floor(x);
 }
 
-// Base colors to generate triadic palettes from
-const BASE_COLORS = [
-  "#0b5bff", // Blue
-  "#ff006e", // Pink
-  "#06ffa5", // Green
-  "#ffbe0b", // Yellow
-  "#8338ec", // Purple
-  "#fb5607", // Orange
-  "#3a86ff", // Bright blue
-  "#06d6a0", // Teal
-];
-
-function RandomShapes({ colorSeed, shapeSeed, paletteType }: { colorSeed: number; shapeSeed: number; paletteType: PaletteType }) {
+function RandomShapes({ baseColor, shapeSeed, paletteType }: { baseColor: string; shapeSeed: number; paletteType: PaletteType }) {
   const { shapes, selectedPalette } = useMemo(
     () => {
-      // Select a base color based on colorSeed (separate from shape positions)
-      const paletteSeed = seededRandom(colorSeed * 0.1);
-      const baseColor = BASE_COLORS[Math.floor(paletteSeed * BASE_COLORS.length)];
-      
       // Generate palette from the base color based on selected type
       const selectedPalette = generatePalette(baseColor, paletteType);
       
@@ -84,7 +48,7 @@ function RandomShapes({ colorSeed, shapeSeed, paletteType }: { colorSeed: number
       
       return { shapes, selectedPalette };
     },
-    [colorSeed, shapeSeed, paletteType]
+    [baseColor, shapeSeed, paletteType]
   );
 
   return (
@@ -136,19 +100,17 @@ function GlassPane() {
 }
 
 export default function Home() {
-  const [colorSeed, setColorSeed] = useState(0);
+  const [baseColor, setBaseColor] = useState('#0b5bff');
   const [shapeSeed, setShapeSeed] = useState(0);
   const [paletteType, setPaletteType] = useState<PaletteType>('triadic');
 
+  // Generate palette for display
+  const palette = useMemo(() => {
+    return generatePalette(baseColor, paletteType);
+  }, [baseColor, paletteType]);
+
   const handleRefresh = () => {
     // Only change shape positions, keep colors the same
-    setShapeSeed(() => Math.random() * 10000);
-  };
-
-  const handlePresetClick = (preset: PresetConfig) => {
-    setPaletteType(preset.paletteType);
-    setColorSeed(preset.seedOffset);
-    // Also refresh shapes when changing preset
     setShapeSeed(() => Math.random() * 10000);
   };
 
@@ -184,134 +146,186 @@ export default function Home() {
           camera={{ position: [0, 0, 5], fov: 45 }}
           orthographic={false}
         >
-          <RandomShapes colorSeed={colorSeed} shapeSeed={shapeSeed} paletteType={paletteType} />
+          <RandomShapes baseColor={baseColor} shapeSeed={shapeSeed} paletteType={paletteType} />
           <GlassPane />
         </Canvas>
       </div>
 
-      {/* Toolbars Container - Side by Side */}
+      {/* Two Column Layout */}
       <div style={{
         width: '90%',
         maxWidth: '1400px',
         display: 'flex',
         gap: '16px',
-        alignItems: 'center',
+        alignItems: 'flex-start',
       }}>
-        {/* Toolbar 1: Color Presets */}
-        <div style={{
-          flex: '1',
-          height: '70px',
-          backgroundColor: 'rgba(30, 30, 30, 0.95)',
-          borderRadius: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '0 24px',
-          gap: '12px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-          backdropFilter: 'blur(10px)',
-        }}>
-          {COLOR_PRESETS.map((preset, index) => (
-            <button
-              key={index}
-              onClick={() => handlePresetClick(preset)}
-              style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '10px',
-                border: '2px solid rgba(255, 255, 255, 0.1)',
-                cursor: 'pointer',
-                padding: '2px',
-                background: preset.previewColors.length > 1
-                  ? `linear-gradient(135deg, ${preset.previewColors.join(', ')})`
-                  : preset.previewColors[0],
-                transition: 'all 0.2s',
-                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.3)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.1)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-              }}
-              title={preset.name}
-            />
-          ))}
-        </div>
-
-        {/* Toolbar 2: Palette Type & Refresh */}
+        {/* Column 1: Color Picker */}
         <div style={{
           flex: '0 0 auto',
-          height: '70px',
           backgroundColor: 'rgba(30, 30, 30, 0.95)',
           borderRadius: '16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          padding: '0 24px',
-          gap: '16px',
+          padding: '8px',
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
           backdropFilter: 'blur(10px)',
         }}>
-          <select
-            value={paletteType}
-            onChange={(e) => setPaletteType(e.target.value as PaletteType)}
-            style={{
-              padding: '10px 16px',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: '10px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-              color: '#fff',
-              transition: 'all 0.2s',
-              outline: 'none',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-            }}
-          >
-            <option value="complementary">Complementary (2)</option>
-            <option value="split">Split (3)</option>
-            <option value="monochromatic">Monochromatic (3)</option>
-            <option value="analogous">Analogous (3)</option>
-            <option value="triadic">Triadic (3)</option>
-            <option value="square">Square (4)</option>
-          </select>
-          <button
-            onClick={handleRefresh}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: 'rgba(255, 255, 255, 0.1)',
-              border: '1px solid rgba(255, 255, 255, 0.2)',
-              borderRadius: '10px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontFamily: 'system-ui, -apple-system, sans-serif',
-              color: '#fff',
-              transition: 'all 0.2s',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
-              e.currentTarget.style.transform = 'scale(1.05)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-              e.currentTarget.style.transform = 'scale(1)';
-            }}
-          >
-            <span>↻</span>
-            <span>Refresh</span>
-          </button>
+          <ColorWheel value={baseColor} onChange={setBaseColor} />
+        </div>
+
+        {/* Column 2: Controls and Palette */}
+        <div style={{
+          flex: '1',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+        }}>
+          {/* Row 1: Palette Type & Refresh */}
+          <div style={{
+            backgroundColor: 'rgba(30, 30, 30, 0.95)',
+            borderRadius: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '12px 20px',
+            gap: '16px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+            backdropFilter: 'blur(10px)',
+          }}>
+            <select
+              value={paletteType}
+              onChange={(e) => setPaletteType(e.target.value as PaletteType)}
+              style={{
+                padding: '10px 16px',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                color: '#fff',
+                transition: 'all 0.2s',
+                outline: 'none',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+              }}
+            >
+              <option value="complementary">Complementary (2)</option>
+              <option value="split">Split (3)</option>
+              <option value="monochromatic">Monochromatic (3)</option>
+              <option value="analogous">Analogous (3)</option>
+              <option value="triadic">Triadic (3)</option>
+              <option value="square">Square (4)</option>
+            </select>
+            <button
+              onClick={handleRefresh}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontFamily: 'system-ui, -apple-system, sans-serif',
+                color: '#fff',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              <span>↻</span>
+              <span>Refresh Pattern</span>
+            </button>
+          </div>
+
+          {/* Row 2: Palette Colors */}
+          <div style={{
+            backgroundColor: 'rgba(30, 30, 30, 0.95)',
+            borderRadius: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '8px 12px',
+            gap: '6px',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+          }}>
+            {palette.map((color, index) => (
+              <div
+                key={index}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '6px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer',
+                  flex: '1',
+                  minWidth: '0',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
+                onClick={() => {
+                  setBaseColor(color);
+                }}
+                title={`Click to set as base color: ${color.toUpperCase()}`}
+              >
+                <div
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '6px',
+                    backgroundColor: color,
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
+                    transition: 'all 0.2s',
+                  }}
+                />
+                <span
+                  style={{
+                    color: '#fff',
+                    fontSize: '9px',
+                    fontFamily: 'monospace',
+                    fontWeight: '500',
+                    letterSpacing: '0.2px',
+                    opacity: 0.85,
+                    textAlign: 'center',
+                  }}
+                >
+                  {color.toUpperCase()}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
