@@ -147,3 +147,24 @@ export function generatePalette(baseHex: string, type: PaletteType): string[] {
   }
 }
 
+// Calculate relative luminance for contrast calculation
+function getLuminance(hex: string): number {
+  hex = hex.replace("#", "");
+  const r = parseInt(hex.substring(0, 2), 16) / 255;
+  const g = parseInt(hex.substring(2, 4), 16) / 255;
+  const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+  const [rs, gs, bs] = [r, g, b].map(val => {
+    return val <= 0.03928 ? val / 12.92 : Math.pow((val + 0.055) / 1.055, 2.4);
+  });
+
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+// Determine if text should be black or white based on background color
+export function getContrastColor(hex: string): 'black' | 'white' {
+  const luminance = getLuminance(hex);
+  // Use white text on dark backgrounds (luminance < 0.5), black on light
+  return luminance > 0.5 ? 'black' : 'white';
+}
+

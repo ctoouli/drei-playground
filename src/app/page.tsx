@@ -1,9 +1,9 @@
 'use client';
 
 import { Canvas } from '@react-three/fiber';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { MeshTransmissionMaterial } from '@react-three/drei';
-import { generatePalette, type PaletteType } from '../colorUtils';
+import { generatePalette, type PaletteType, getContrastColor } from '../colorUtils';
 import ColorWheel from '../components/ColorWheel';
 
 // Seeded random function for stable random values
@@ -103,6 +103,7 @@ export default function Home() {
   const [baseColor, setBaseColor] = useState('#0b5bff');
   const [shapeSeed, setShapeSeed] = useState(0);
   const [paletteType, setPaletteType] = useState<PaletteType>('triadic');
+  const [copiedColor, setCopiedColor] = useState<string | null>(null);
 
   // Generate palette for display
   const palette = useMemo(() => {
@@ -113,6 +114,16 @@ export default function Home() {
     // Only change shape positions, keep colors the same
     setShapeSeed(() => Math.random() * 10000);
   };
+
+  // Auto-dismiss notification after 2 seconds
+  useEffect(() => {
+    if (copiedColor) {
+      const timer = setTimeout(() => {
+        setCopiedColor(null);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [copiedColor]);
 
 
   return (
@@ -259,75 +270,158 @@ export default function Home() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '8px 12px',
-            gap: '6px',
             boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
             backdropFilter: 'blur(10px)',
             border: '1px solid rgba(255, 255, 255, 0.1)',
           }}>
-            {palette.map((color, index) => (
-              <div
-                key={index}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '4px',
-                  padding: '6px',
-                  borderRadius: '8px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  transition: 'all 0.2s ease',
-                  cursor: 'pointer',
-                  flex: '1',
-                  minWidth: '0',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                  e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.3)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)';
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-                onClick={() => {
-                  setBaseColor(color);
-                }}
-                title={`Click to set as base color: ${color.toUpperCase()}`}
-              >
+            {palette.map((color, index) => {
+              const contrastColor = getContrastColor(color);
+              const textColor = contrastColor === 'black' ? '#000' : '#fff';
+              const isFirst = index === 0;
+              const isLast = index === palette.length - 1;
+              
+              return (
                 <div
+                  key={index}
                   style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '6px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '12px',
+                    borderRadius: isFirst 
+                      ? '8px 0 0 8px' 
+                      : isLast 
+                        ? '0 8px 8px 0' 
+                        : '0',
                     backgroundColor: color,
-                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                    boxShadow: '0 2px 6px rgba(0, 0, 0, 0.3)',
-                    transition: 'all 0.2s',
+                    borderTop: '1px solid rgba(0, 0, 0, 0.1)',
+                    borderBottom: '1px solid rgba(0, 0, 0, 0.1)',
+                    borderLeft: isFirst ? '1px solid rgba(0, 0, 0, 0.1)' : 'none',
+                    borderRight: isLast ? '1px solid rgba(0, 0, 0, 0.1)' : 'none',
+                    transition: 'all 0.2s ease',
+                    cursor: 'pointer',
+                    flex: '1',
+                    minWidth: '0',
+                    minHeight: '80px',
+                    position: 'relative',
                   }}
-                />
-                <span
-                  style={{
-                    color: '#fff',
-                    fontSize: '9px',
-                    fontFamily: 'monospace',
-                    fontWeight: '500',
-                    letterSpacing: '0.2px',
-                    opacity: 0.85,
-                    textAlign: 'center',
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
                   }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                  onClick={() => {
+                    setBaseColor(color);
+                  }}
+                  title={`Click to set as base color: ${color.toUpperCase()}`}
                 >
-                  {color.toUpperCase()}
-                </span>
-              </div>
-            ))}
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      try {
+                        await navigator.clipboard.writeText(color.toUpperCase());
+                        setCopiedColor(color);
+                      } catch (err) {
+                        console.error('Failed to copy:', err);
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      padding: '6px 12px',
+                      backgroundColor: 'transparent',
+                      border: `1px solid ${textColor}`,
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontFamily: 'monospace',
+                      fontSize: '11px',
+                      fontWeight: '500',
+                      letterSpacing: '0.5px',
+                      color: textColor,
+                      transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = contrastColor === 'black' 
+                        ? 'rgba(0, 0, 0, 0.1)' 
+                        : 'rgba(255, 255, 255, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                  >
+                    <span>{color.toUpperCase()}</span>
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      width="14" 
+                      height="14" 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      stroke="currentColor" 
+                      strokeWidth="2" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round"
+                      style={{ flexShrink: 0 }}
+                    >
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <path d="M7 7m0 2.667a2.667 2.667 0 0 1 2.667 -2.667h8.666a2.667 2.667 0 0 1 2.667 2.667v8.666a2.667 2.667 0 0 1 -2.667 2.667h-8.666a2.667 2.667 0 0 1 -2.667 -2.667z" />
+                      <path d="M4.012 16.737a2.005 2.005 0 0 1 -1.012 -1.737v-10c0 -1.1 .9 -2 2 -2h10c.75 0 1.158 .385 1.5 1" />
+                    </svg>
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
+
+      {/* Copy Notification Toast */}
+      {copiedColor && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '40px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(30, 30, 30, 0.95)',
+            color: '#fff',
+            padding: '12px 24px',
+            borderRadius: '12px',
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            fontFamily: 'system-ui, -apple-system, sans-serif',
+            fontSize: '14px',
+            fontWeight: '500',
+            zIndex: 1000,
+            animation: 'slideUp 0.3s ease-out',
+          }}
+        >
+          <svg 
+            xmlns="http://www.w3.org/2000/svg" 
+            width="18" 
+            height="18" 
+            viewBox="0 0 24 24" 
+            fill="none" 
+            stroke="currentColor" 
+            strokeWidth="2" 
+            strokeLinecap="round" 
+            strokeLinejoin="round"
+            style={{ color: '#4ade80' }}
+          >
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+          <span>Copied <strong>{copiedColor.toUpperCase()}</strong> to clipboard</span>
+        </div>
+      )}
     </div>
   );
 }
