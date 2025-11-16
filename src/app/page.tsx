@@ -54,7 +54,7 @@ function RandomShapes({ colorSeed, shapeSeed, paletteType }: { colorSeed: number
       // Generate palette from the base color based on selected type
       const selectedPalette = generatePalette(baseColor, paletteType);
       
-      const shapes = Array.from({ length: 10 }, (_, i) => {
+      const shapes = Array.from({ length: 5 }, (_, i) => {
         const seed = (i * 123.456) + shapeSeed;
         const r1 = seededRandom(seed);
         const r2 = seededRandom(seed + 1);
@@ -71,10 +71,10 @@ function RandomShapes({ colorSeed, shapeSeed, paletteType }: { colorSeed: number
             (r2 - 0.5) * 3.5, // y
             -0.2 - i * 0.01, // z, all behind glass
           ] as [number, number, number],
-          // big soft blobs
+          // big soft blobs - larger scale for fewer shapes
           scale: [
-            1.5 + r3 * 3.5,
-            1.5 + r4 * 3.5,
+            3.0 + r3 * 4.0,
+            3.0 + r4 * 4.0,
             1,
           ] as [number, number, number],
           rotation: r5 * Math.PI,
@@ -119,12 +119,12 @@ function GlassPane() {
     <mesh position={[0, 0, 0]} scale={[9, 5, 1]} renderOrder={1}>
       <planeGeometry args={[1, 1]} />
       <MeshTransmissionMaterial
-        resolution={1048}
-        samples={50}
-        thickness={0.08}        // give it some volume so shapes blend more
-        roughness={10}          // max blur → soft gradient look
+        resolution={128}        
+        samples={20}            
+        thickness={0.06}        // give it some volume so shapes blend more
+        roughness={50}          // max blur → soft gradient look
         transmission={0.9}
-        ior={1.5}
+        ior={2}
         chromaticAberration={0.04}
         anisotropy={0.1}
         distortion={0.0}
@@ -177,6 +177,7 @@ export default function Home() {
         boxShadow: '0 20px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1)',
         position: 'relative',
         backgroundColor: '#000',
+        border: '1px solid rgba(255, 255, 255, 1)',
       }}>
         <Canvas 
           style={{ width: '100%', height: '100%' }}
